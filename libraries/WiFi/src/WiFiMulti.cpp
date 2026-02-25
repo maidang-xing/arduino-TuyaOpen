@@ -42,7 +42,8 @@ bool WiFiMulti::addAP(const char* ssid, const char *passphrase)
         PR_ERR("[WIFI][APlistAdd] passphrase too long\r\n");
         return false;
     }
-    newAP.ssid =(char*) tal_malloc(sizeof(char)*strlen(ssid));
+
+    newAP.ssid = (char*)tal_malloc(strlen(ssid) + 1);
     if(!newAP.ssid) {
         PR_ERR("[WIFI][APlistAdd] fail newAP.ssid == 0\r\n");
         return false;
@@ -55,10 +56,11 @@ bool WiFiMulti::addAP(const char* ssid, const char *passphrase)
     }
 
     if(passphrase && *passphrase != 0x00) {
-        newAP.passphrase =(char*) tal_malloc(sizeof(char)*strlen(passphrase));
+        newAP.passphrase = (char*)tal_malloc(strlen(passphrase) + 1);
         if(!newAP.passphrase) {
             PR_ERR("[WIFI][APlistAdd] fail newAP.passphrase == 0\r\n");
             tal_free(newAP.ssid);
+            newAP.ssid = NULL;
             return false;
         }
         strcpy(newAP.passphrase,passphrase);

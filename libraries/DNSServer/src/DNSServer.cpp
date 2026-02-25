@@ -71,6 +71,7 @@ void DNSServer::processNextRequest()
   _CurPacketSize = _Udp.parsePacket();
   if (_CurPacketSize)
   {
+    bool parse_ok = true;
     // Allocate buffer for the DNS query
     if (_buf != NULL) 
       free(_buf);
@@ -81,29 +82,80 @@ void DNSServer::processNextRequest()
     // Put the packet received in the buffer and get DNS header (beginning of message)
     // and the question
     _Udp.read(_buf, _CurPacketSize);
-    memcpy( _DnsHeader, _buf, DNS_HEADER_SIZE ) ; 
-    if ( requestIncludesOnlyOneQuestion() )
-    {
-      // The QName has a variable length, maximum 255 bytes and is comprised of multiple labels.
-      // Each label contains a byte to describe its length and the label itself. The list of 
-      // labels terminates with a zero-valued byte. In "github.com", we have two labels "github" & "com"
-      // Iterate through the labels and copy them as they come into a single buffer (for simplicity's sake)
-      _DnsQuestion->QNameLength = 0 ;
-      while ( _buf[ DNS_HEADER_SIZE + _DnsQuestion->QNameLength ] != 0 )
-      {
-        memcpy( (void*) &_DnsQuestion->QName[_DnsQuestion->QNameLength], (void*) &_buf[DNS_HEADER_SIZE + _DnsQuestion->QNameLength], _buf[DNS_HEADER_SIZE + _DnsQuestion->QNameLength] + 1 ) ;
-        _DnsQuestion->QNameLength += _buf[DNS_HEADER_SIZE + _DnsQuestion->QNameLength] + 1 ; 
+    
+    // Check if packet is large enough to contain DNS header
+    if (_CurPacketSize < DNS_HEADER_SIZE) {
+      parse_ok = false;
+    }
+    
+    if (parse_ok) {
+      memcpy( _DnsHeader, _buf, DNS_HEADER_SIZE );
+    }
+    
+    if ( parse_ok && requestIncludesOnlyOneQuestion() ) {
+      if (_CurPacketSize < DNS_HEADER_SIZE + 1) {
+        parse_ok = false;
       }
-      _DnsQuestion->QName[_DnsQuestion->QNameLength] = 0 ; 
-      _DnsQuestion->QNameLength++ ;   
 
-      // Copy the QType and QClass 
-      memcpy( &_DnsQuestion->QType, (void*) &_buf[DNS_HEADER_SIZE + _DnsQuestion->QNameLength], sizeof(_DnsQuestion->QType) ) ;
-      memcpy( &_DnsQuestion->QClass, (void*) &_buf[DNS_HEADER_SIZE + _DnsQuestion->QNameLength + sizeof(_DnsQuestion->QType)], sizeof(_DnsQuestion->QClass) ) ;
+      if (parse_ok) {
+        // The QName has a variable length, maximum 255 bytes and is comprised of multiple labels.
+        // Each label contains a byte to describe its length and the label itself. The list of 
+        // labels terminates with a zero-valued byte. In "github.com", we have two labels "github" & "com"
+        // Iterate through the labels and copy them as they come into a single buffer (for simplicity's sake)
+        _DnsQuestion->QNameLength = 0 ;
+        while ( parse_ok && _DnsQuestion->QNameLength < sizeof(_DnsQuestion->QName) )
+        {
+          uint16_t q_off = _DnsQuestion->QNameLength;
+          uint16_t src_off = DNS_HEADER_SIZE + q_off;
+
+          // Check if we can read the length byte or terminator
+          if (src_off >= _CurPacketSize) {
+            parse_ok = false;
+            break;
+          }
+
+          // Check for terminator
+          if (_buf[src_off] == 0) {
+            break;
+          }
+
+          uint16_t label_len = _buf[src_off];
+          
+          if ((uint32_t)src_off + (uint32_t)label_len + 1u > (uint32_t)_CurPacketSize) {
+            parse_ok = false;
+            break;
+          }
+
+          // Keep room for the final trailing '\0'
+          if ((uint32_t)q_off + (uint32_t)label_len + 1u >= sizeof(_DnsQuestion->QName)) {
+            parse_ok = false;
+            break;
+          }
+
+          memcpy((void*)&_DnsQuestion->QName[q_off], (void*)&_buf[src_off], label_len + 1);
+          _DnsQuestion->QNameLength += label_len + 1;
+        }
+
+        if (parse_ok && _DnsQuestion->QNameLength < sizeof(_DnsQuestion->QName)) {
+          _DnsQuestion->QName[_DnsQuestion->QNameLength] = 0;
+          _DnsQuestion->QNameLength++;
+
+          // Copy the QType and QClass
+          uint32_t qtype_off = DNS_HEADER_SIZE + _DnsQuestion->QNameLength;
+          uint32_t qclass_off = qtype_off + sizeof(_DnsQuestion->QType);
+          if (qclass_off + sizeof(_DnsQuestion->QClass) > (uint32_t)_CurPacketSize) {
+            parse_ok = false;
+          } else {
+            memcpy(&_DnsQuestion->QType, (void*)&_buf[qtype_off], sizeof(_DnsQuestion->QType));
+            memcpy(&_DnsQuestion->QClass, (void*)&_buf[qclass_off], sizeof(_DnsQuestion->QClass));
+          }
+        }
+      }
     }
     
 
-    if (_DnsHeader->QRFlag == DNS_QR_QUERY &&
+    if (parse_ok &&
+        _DnsHeader->QRFlag == DNS_QR_QUERY &&
         _DnsHeader->OPCode == DNS_OPCODE_QUERY &&
         requestIncludesOnlyOneQuestion() &&
         (_domain == "*" || getDomainNameWithoutWwwPrefix() == _domain)
@@ -111,7 +163,7 @@ void DNSServer::processNextRequest()
     {
       replyWithIP();
     }
-    else if (_DnsHeader->QRFlag == DNS_QR_QUERY)
+    else if (parse_ok && _DnsHeader->QRFlag == DNS_QR_QUERY)
     {
       replyWithCustomCode();
     }
@@ -137,6 +189,10 @@ String DNSServer::getDomainNameWithoutWwwPrefix()
   if (_buf == NULL) 
     return parsedDomainName;
   
+  // Check if packet is large enough to contain domain name
+  if (_CurPacketSize <= DNS_OFFSET_DOMAIN_NAME)
+    return parsedDomainName;
+  
   // Set the start of the domain just after the header (12 bytes). If equal to null character, return an empty domain
   unsigned char *start = _buf + DNS_OFFSET_DOMAIN_NAME;
   if (*start == 0)
@@ -145,15 +201,44 @@ String DNSServer::getDomainNameWithoutWwwPrefix()
   }
 
   int pos = 0;
+  int maxLen = _CurPacketSize - DNS_OFFSET_DOMAIN_NAME;
+  
   while(true)
   {
+    // Check if we can read the label length byte
+    if (pos >= maxLen) {
+      return "";  // Invalid packet
+    }
+    
     unsigned char labelLength = *(start + pos);
+    
+    // Check for terminator
+    if (labelLength == 0) {
+      downcaseAndRemoveWwwPrefix(parsedDomainName);
+      return parsedDomainName;
+    }
+    
+    // Validate label length (DNS labels are max 63 bytes)
+    if (labelLength > 63 || pos + labelLength >= maxLen) {
+      return "";  // Invalid packet
+    }
+    
+    // Read the label
     for(int i = 0; i < labelLength; i++)
     {
       pos++;
+      if (pos >= maxLen) {
+        return "";  // Invalid packet
+      }
       parsedDomainName += (char)*(start + pos);
     }
     pos++;
+    
+    // Check if we can read the next byte (either next label length or terminator)
+    if (pos >= maxLen) {
+      return "";  // Invalid packet
+    }
+    
     if (*(start + pos) == 0)
     {
       downcaseAndRemoveWwwPrefix(parsedDomainName);
