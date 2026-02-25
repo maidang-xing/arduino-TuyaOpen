@@ -223,6 +223,10 @@ int WiFiUDP::parsePacket(){
   remote_port = port;
   if (len > 0) {
     rx_buffer = new(std::nothrow) cbuf(len);
+    if(!rx_buffer){
+      tal_free(buf);
+      return 0;
+    }
     rx_buffer->write(buf, len);
   }
   tal_free(buf);

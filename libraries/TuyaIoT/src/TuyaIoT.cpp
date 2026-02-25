@@ -271,6 +271,16 @@ uint8_t TuyaIoTCloudClass::eventGetDpId(tuya_event_msg_t* event, uint16_t index)
     return 0;
   }
 
+  if (event->value.dpobj == NULL || event->value.dpobj->dps == NULL) {
+    PR_ERR("dpobj is NULL");
+    return 0;
+  }
+
+  if (index >= event->value.dpobj->dpscnt) {
+    PR_ERR("dp index out of range, index=%u dpscnt=%u", index, event->value.dpobj->dpscnt);
+    return 0;
+  }
+
   return event->value.dpobj->dps[index].id;
 }
 

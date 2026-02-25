@@ -50,7 +50,7 @@ private:
             if(_fd < 0){
                 return 0;
             }
-            int count;
+            int count = 0;
 
             int res = lwip_ioctl(_fd, FIONREAD, &count);
             if(res < 0) {
@@ -74,7 +74,7 @@ private:
                 _fill = 0;
                 _pos = 0;
             }
-            if(!_buffer || _size <= _fill || !r_available()) {
+            if(!_buffer || _size <= _fill) {
                 return 0;
             }
             int res = recv(_fd, _buffer + _fill, _size - _fill, MSG_DONTWAIT);
@@ -152,7 +152,10 @@ public:
     }
 
     size_t available(){
-        return _fill - _pos + r_available();
+        if(_pos == _fill){
+            fillBuffer();
+        }
+        return _fill - _pos;
     }
 
     void flush(){
