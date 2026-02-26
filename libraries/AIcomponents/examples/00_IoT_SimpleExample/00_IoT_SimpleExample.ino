@@ -19,7 +19,7 @@
 #define TUYA_DEVICE_AUTHKEY "keyxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 #define TUYA_PRODUCT_ID     "qhivvyqawogv04e4"
 
-#define APP_LED_PIN         1
+#define APP_LED_PIN         2
 /***********************************************************
 ***********************function define**********************
 ***********************************************************/
