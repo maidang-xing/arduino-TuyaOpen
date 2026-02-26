@@ -8,8 +8,6 @@
  * and integration with the Tuya IoT ecosystem.
  * 
  * @copyright Copyright (c) 2021-2025 Tuya Inc. All Rights Reserved.
- *
- * @note ===================== Chat bot only support TUYA_T5AI platform =====================
  */
 #include "Log.h"
 #include "TuyaIoT.h"
@@ -20,8 +18,8 @@
 #define TUYA_DEVICE_UUID    "uuidxxxxxxxxxxxxxxxx"
 #define TUYA_DEVICE_AUTHKEY "keyxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 #define TUYA_PRODUCT_ID     "qhivvyqawogv04e4"
-#define APP_LED_PIN         1
 
+#define APP_LED_PIN         1
 /***********************************************************
 ***********************function define**********************
 ***********************************************************/
