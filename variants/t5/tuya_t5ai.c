@@ -1,6 +1,6 @@
 /**
- * @file tuya_t5ai_core.c
- * @brief tuya_t5ai_core module is used to
+ * @file tuya_t5ai.c
+ * @brief tuya_t5ai module is used to
  * @version 0.1
  * @copyright Copyright (c) 2021-2025 Tuya Inc. All Rights Reserved.
  */

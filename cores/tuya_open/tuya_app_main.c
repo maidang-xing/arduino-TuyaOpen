@@ -60,10 +60,12 @@ static char thread_name[] = "arduino_thread";
 /***********************************************************
 ***********************function define**********************
 ***********************************************************/
+#if (!defined(ARDUINO_CHIP_T5) && !defined(ARDUINO_CHIP_esp32))
 static void __wifi_callback_event(WF_EVENT_E event, void *arg)
 {
   return;
 }
+#endif
 
 void app_open_sdk_init(void)
 {
@@ -91,7 +93,7 @@ void app_open_sdk_init(void)
 #endif
 
   // wifi init
-#if (!defined(ARDUINO_CHIP_T5) && !defined(ARDUINO_ESP32))
+#if (!defined(ARDUINO_CHIP_T5) && !defined(ARDUINO_CHIP_esp32))
   tal_wifi_init(__wifi_callback_event);
   tal_wifi_set_country_code("CN");
 #endif
@@ -108,7 +110,7 @@ static void ArduinoThread(void *arg)
   }
 #endif // defined(ARDUINO_CHIP_T2)
 
-#if defined(ARDUINO_CHIP_LN882H) && defined(ARDUINO_ESP32)
+#if defined(ARDUINO_CHIP_LN882H) && defined(ARDUINO_CHIP_esp32)
   tkl_uart_deinit(TUYA_UART_NUM_0);
 #elif defined(ARDUINO_CHIP_T3) && defined(ARDUINO_CHIP_T5)
   tkl_uart_deinit(TUYA_UART_NUM_1); // TODO: close vendor log
@@ -121,7 +123,7 @@ static void ArduinoThread(void *arg)
 
 void tuya_app_main(void)
 {
-#if (!defined(ARDUINO_ESP32))
+#if (!defined(ARDUINO_CHIP_esp32))
   __asm("BL __libc_init_array");
 #endif
 
