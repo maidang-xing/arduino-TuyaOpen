@@ -36,17 +36,16 @@ jobs:
           foreach ($board in ($boardChipMap.Keys | Sort-Object)) {
             $chip = $boardChipMap[$board]
             if ($chip -eq "T5") {
-              foreach ($sketch in $allSketches) {
-                $matrix += @{ board = $board; sketch = $sketch }
-              }
+              $sketches = $allSketches -join ";"
             } else {
-              $matrix += @{ board = $board; sketch = "libraries/AIcomponents/examples/00_IoT_SimpleExample/00_IoT_SimpleExample.ino" }
+              $sketches = "libraries/AIcomponents/examples/00_IoT_SimpleExample/00_IoT_SimpleExample.ino"
             }
+            $matrix += @{ board = $board; sketches = $sketches }
           }
 
           $json = ConvertTo-Json -Compress @{ include = $matrix }
           echo "matrix=$json" >> $env:GITHUB_OUTPUT
-          echo "Total compile jobs: $($matrix.Count)"
+          echo "Total board jobs: $($matrix.Count)"
         shell: pwsh
 
   # Job 2: Compile examples for each board on Windows
@@ -80,13 +79,27 @@ jobs:
           if ($installedStr -notmatch 'tuya_open') { Write-Error "tuya_open core not found after install."; exit 1 }
         shell: pwsh
 
-      - name: Compile ${{ matrix.sketch }} for ${{ matrix.board }}
+      - name: Compile sketches for ${{ matrix.board }}
         run: |
           $fqbn = "tuya_open:tuya_open:${{ matrix.board }}"
-          $sketch = "${{ matrix.sketch }}"
-          echo "Board: ${{ matrix.board }} | Sketch: $sketch"
-          arduino-cli compile --fqbn $fqbn $sketch
-          if ($LASTEXITCODE -ne 0) { Write-Error "Compilation failed for ${{ matrix.board }}: $sketch"; exit 1 }
+          $sketches = "${{ matrix.sketches }}" -split ";"
+          $total = $sketches.Count
+          $failed = @()
+          $i = 0
+          foreach ($sketch in $sketches) {
+            $i++
+            echo "[$i/$total] Compiling: $sketch"
+            arduino-cli compile --fqbn $fqbn $sketch
+            if ($LASTEXITCODE -ne 0) {
+              $failed += $sketch
+              echo "::error::Compilation failed: $sketch"
+            }
+          }
+          if ($failed.Count -gt 0) {
+            Write-Error "$($failed.Count)/$total sketch(es) failed for ${{ matrix.board }}"
+            exit 1
+          }
+          echo "All $total sketch(es) compiled successfully for ${{ matrix.board }}"
         shell: pwsh
 
   # Job 3: Summary

@@ -76,7 +76,7 @@ class FormatChecker:
                     continue
                     
                 # Only process C/C++ files
-                if line.endswith(('.c', '.cpp', '.h', '.hpp', '.cc', '.cxx')):
+                if line.endswith(('.c', '.cpp', '.h', '.hpp', '.cc', '.cxx', '.ino')):
                     file_path = self.project_root / line
                     if file_path.exists() and not self._should_ignore_file(line):
                         files.append(line)
@@ -90,7 +90,7 @@ class FormatChecker:
     def _get_local_files(self, file_patterns=None, directories=None):
         """Get local C/C++ files for debug mode"""
         files = []
-        c_cpp_extensions = ('.c', '.cpp', '.h', '.hpp', '.cc', '.cxx')
+        c_cpp_extensions = ('.c', '.cpp', '.h', '.hpp', '.cc', '.cxx', '.ino')
         
         # Process specified files
         if file_patterns:
