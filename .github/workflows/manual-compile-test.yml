@@ -15,9 +15,9 @@ on:
         type: string
 
 jobs:
-  # Job 1: Determine boards to compile
+  # Job 1: Determine boards to compile (Windows)
   get-boards:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     outputs:
       board-list: ${{ steps.parse.outputs.boards }}
     steps:
@@ -27,18 +27,19 @@ jobs:
       - name: Determine board list
         id: parse
         run: |
-          INPUT_BOARD="${{ github.event.inputs.board }}"
-          if [ -z "$INPUT_BOARD" ]; then
+          $inputBoard = "${{ github.event.inputs.board }}"
+          if ([string]::IsNullOrWhiteSpace($inputBoard)) {
             # No board specified, parse all boards from boards.txt
-            BOARDS=$(grep -E '^[^#][A-Za-z0-9_]+\.name=' boards.txt | sed 's/\.name=.*//' | sort -u | jq -R -s -c 'split("\n") | map(select(length > 0))')
-            echo "Compiling all boards: $BOARDS"
-          else
+            $ids = Get-Content boards.txt | Where-Object { $_ -match '^[^#][A-Za-z0-9_]+\.name=' } | ForEach-Object { ($_ -split '\.name=')[0] } | Sort-Object -Unique
+            $json = $ids | ConvertTo-Json -Compress
+            echo "Compiling all boards: $json"
+          } else {
             # Specific board specified
-            BOARDS=$(echo "[\"$INPUT_BOARD\"]")
-            echo "Compiling specific board: $BOARDS"
-          fi
-          echo "boards=$BOARDS" >> "$GITHUB_OUTPUT"
-
+            $json = ConvertTo-Json @($inputBoard) -Compress
+            echo "Compiling specific board: $json"
+          }
+          echo "boards=$json" >> $env:GITHUB_OUTPUT
+        shell: pwsh
   # Job 2: Compile on Windows
   compile:
     needs: get-boards
@@ -64,13 +65,30 @@ jobs:
       - name: Configure arduino-cli
         run: |
           arduino-cli config init --overwrite
-          arduino-cli config add board_manager.additional_urls https://github.com/maidang-xing/arduino-TuyaOpen/releases/download/global/package_tuya_open_index.json
+          arduino-cli config add board_manager.additional_urls https://github.com/tuya/arduino-tuyaopen/releases/download/global/package_tuya_open_index.json
           arduino-cli core update-index
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "Failed to update core index. Please check the board manager URL."
+            exit 1
+          }
         shell: pwsh
 
       - name: Install tuya_open core
         run: |
           arduino-cli core install tuya_open:tuya_open
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "Failed to install tuya_open core. The board package download may have failed."
+            exit 1
+          }
+          # Verify installation
+          $installed = arduino-cli core list
+          echo "Installed cores:"
+          echo $installed
+          if ($installed -notmatch 'tuya_open') {
+            Write-Error "tuya_open core is not found in installed cores. Installation failed."
+            exit 1
+          }
+          echo "tuya_open core installed successfully."
         shell: pwsh
 
       - name: Compile ${{ github.event.inputs.sketch }} for ${{ matrix.board }}
@@ -83,24 +101,27 @@ jobs:
           echo "Sketch: $sketch"
           echo "=========================================="
           arduino-cli compile --fqbn $fqbn $sketch --verbose
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "Compilation failed for board: ${{ matrix.board }}"
+            exit 1
+          }
         shell: pwsh
 
   # Job 3: Summary
   compile-result:
     needs: [get-boards, compile]
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     if: always()
     steps:
       - name: Compile result summary
         run: |
-          echo "## Manual Compile Test Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ needs.compile.result }}" == "success" ]; then
-            echo "✅ All selected boards compiled successfully!" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "❌ Some boards failed to compile. Please check the logs above." >> $GITHUB_STEP_SUMMARY
-          fi
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Boards tested:** ${{ needs.get-boards.outputs.board-list }}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Sketch:** \`${{ github.event.inputs.sketch }}\`" >> $GITHUB_STEP_SUMMARY
+          $summary = "## Manual Compile Test Summary`n`n"
+          if ("${{ needs.compile.result }}" -eq "success") {
+            $summary += "✅ All selected boards compiled successfully!`n"
+          } else {
+            $summary += "❌ Some boards failed to compile. Please check the logs above.`n"
+          }
+          $summary += "`n**Boards tested:** ${{ needs.get-boards.outputs.board-list }}`n"
+          $summary += "`n**Sketch:** ``${{ github.event.inputs.sketch }}```n"
+          $summary | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
+        shell: pwsh

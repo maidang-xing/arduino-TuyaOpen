@@ -6,7 +6,7 @@
 要求：
 1. 编译环境：windows，下载 arduino-cli 工具，在windows上编译。
 
-2. 编译开发板：从仓库的release页面，https://github.com/maidang-xing/arduino-TuyaOpen/releases/download/global/package_tuya_open_index.json  下载开发板包，并在arduino-cli中添加开发板管理器URL。
+2. 编译开发板：从仓库的release页面，https://github.com/tuya/arduino-tuyaopen/releases/download/global/package_tuya_open_index.json  下载开发板包，并在arduino-cli中添加开发板管理器URL。
 
 3. 编译项目从 boards.txt 读取开发板信息。
 

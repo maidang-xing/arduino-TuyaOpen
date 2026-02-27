@@ -4,7 +4,6 @@
  * @copyright Copyright (c) 2021-2025 Tuya Inc. All Rights Reserved.
  * @note Only supports TUYA_T5AI platform
  */
-
 #include <Arduino.h>
 #include "TuyaAI.h"
 #include "TuyaIoT.h"
@@ -599,7 +598,8 @@ static void tuyaIoTEventCallback(tuya_event_msg_t *event)
     }
 }
 
-static void handleUserInput() {
+static void handleUserInput() 
+{
     static int i = 0;
     static uint8_t _recv_buf[256];
     while (Serial.available()) {
