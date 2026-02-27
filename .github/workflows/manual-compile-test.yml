@@ -9,9 +9,9 @@ on:
         default: ''
         type: string
       sketch:
-        description: 'Sketch path to compile'
+        description: 'Sketch path to compile (leave empty: T5 boards compile all, others compile SimpleExample)'
         required: false
-        default: 'libraries/AIcomponents/examples/00_IoT_SimpleExample/00_IoT_SimpleExample.ino'
+        default: ''
         type: string
 
 jobs:
