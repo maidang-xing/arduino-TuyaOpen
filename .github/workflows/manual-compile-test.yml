@@ -15,39 +15,76 @@ on:
         type: string
 
 jobs:
-  # Job 1: Determine boards to compile (Windows)
+  # Job 1: Determine boards and sketches to compile (Windows)
   get-boards:
     runs-on: windows-latest
     outputs:
-      board-list: ${{ steps.parse.outputs.boards }}
+      matrix: ${{ steps.parse.outputs.matrix }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Determine board list
+      - name: Build compile matrix
         id: parse
         run: |
           $inputBoard = "${{ github.event.inputs.board }}"
-          if ([string]::IsNullOrWhiteSpace($inputBoard)) {
-            # No board specified, parse all boards from boards.txt
-            $ids = Get-Content boards.txt | Where-Object { $_ -match '^[^#][A-Za-z0-9_]+\.name=' } | ForEach-Object { ($_ -split '\.name=')[0] } | Sort-Object -Unique
-            $json = $ids | ConvertTo-Json -Compress
-            echo "Compiling all boards: $json"
-          } else {
-            # Specific board specified
-            $json = ConvertTo-Json @($inputBoard) -Compress
-            echo "Compiling specific board: $json"
+          $inputSketch = "${{ github.event.inputs.sketch }}"
+
+          # Parse board IDs and their chip types from boards.txt
+          $boardChipMap = @{}
+          Get-Content boards.txt | ForEach-Object {
+            if ($_ -match '^([^#][A-Za-z0-9_]+)\.build\.chip=(.+)$') {
+              $boardChipMap[$Matches[1]] = $Matches[2].Trim()
+            }
           }
-          echo "boards=$json" >> $env:GITHUB_OUTPUT
+
+          # Determine which boards to compile
+          if ([string]::IsNullOrWhiteSpace($inputBoard)) {
+            $boards = $boardChipMap.Keys | Sort-Object
+            echo "Compiling all boards"
+          } else {
+            $boards = @($inputBoard)
+            echo "Compiling specific board: $inputBoard"
+          }
+
+          # Find all .ino example files
+          $repoRoot = (Get-Location).Path -replace '\\','/'
+          $allSketches = Get-ChildItem -Path "libraries" -Filter "*.ino" -Recurse | ForEach-Object {
+            $rel = $_.FullName -replace '\\','/'
+            $rel.Substring($repoRoot.Length + 1)
+          }
+
+          # Build matrix
+          $matrix = @()
+          foreach ($board in $boards) {
+            $chip = $boardChipMap[$board]
+
+            if (-not [string]::IsNullOrWhiteSpace($inputSketch)) {
+              # User specified a sketch, use it for all boards
+              $matrix += @{ board = $board; sketch = $inputSketch }
+            } elseif ($chip -eq "T5") {
+              # T5 series: compile all examples
+              foreach ($sketch in $allSketches) {
+                $matrix += @{ board = $board; sketch = $sketch }
+              }
+            } else {
+              # Other boards: only compile SimpleExample
+              $matrix += @{ board = $board; sketch = "libraries/AIcomponents/examples/00_IoT_SimpleExample/00_IoT_SimpleExample.ino" }
+            }
+          }
+
+          $json = ConvertTo-Json -Compress @{ include = $matrix }
+          echo "matrix=$json" >> $env:GITHUB_OUTPUT
+          echo "Total compile jobs: $($matrix.Count)"
         shell: pwsh
+
   # Job 2: Compile on Windows
   compile:
     needs: get-boards
     runs-on: windows-latest
     strategy:
       fail-fast: false
-      matrix:
-        board: ${{ fromJson(needs.get-boards.outputs.board-list) }}
+      matrix: ${{ fromJson(needs.get-boards.outputs.matrix) }}
 
     steps:
       - name: Checkout repository
@@ -91,10 +128,10 @@ jobs:
           echo "tuya_open core installed successfully."
         shell: pwsh
 
-      - name: Compile ${{ github.event.inputs.sketch }} for ${{ matrix.board }}
+      - name: Compile ${{ matrix.sketch }} for ${{ matrix.board }}
         run: |
           $fqbn = "tuya_open:tuya_open:${{ matrix.board }}"
-          $sketch = "${{ github.event.inputs.sketch }}"
+          $sketch = "${{ matrix.sketch }}"
           echo "=========================================="
           echo "Board:  ${{ matrix.board }}"
           echo "FQBN:   $fqbn"
@@ -102,7 +139,7 @@ jobs:
           echo "=========================================="
           arduino-cli compile --fqbn $fqbn $sketch --verbose
           if ($LASTEXITCODE -ne 0) {
-            Write-Error "Compilation failed for board: ${{ matrix.board }}"
+            Write-Error "Compilation failed for board: ${{ matrix.board }}, sketch: $sketch"
             exit 1
           }
         shell: pwsh
@@ -121,7 +158,6 @@ jobs:
           } else {
             $summary += "❌ Some boards failed to compile. Please check the logs above.`n"
           }
-          $summary += "`n**Boards tested:** ${{ needs.get-boards.outputs.board-list }}`n"
-          $summary += "`n**Sketch:** ``${{ github.event.inputs.sketch }}```n"
+          $summary += "`n**Note:** T5 series boards compile all examples; other boards compile only 00_IoT_SimpleExample (unless a specific sketch is specified).`n"
           $summary | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
         shell: pwsh

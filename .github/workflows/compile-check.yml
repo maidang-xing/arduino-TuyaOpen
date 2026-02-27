@@ -7,33 +7,68 @@ on:
     branches: [ main ]
 
 jobs:
-  # Job 1: Parse boards.txt to get board list (Windows)
+  # Job 1: Parse boards.txt and build compile matrix (Windows)
   get-boards:
     runs-on: windows-latest
     outputs:
-      board-list: ${{ steps.parse.outputs.boards }}
+      matrix: ${{ steps.parse.outputs.matrix }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Parse boards.txt for board IDs
+      - name: Build compile matrix from boards.txt
         id: parse
         run: |
-          # Extract board IDs from boards.txt (lines matching <id>.name=<name>)
-          $ids = Get-Content boards.txt | Where-Object { $_ -match '^[^#][A-Za-z0-9_]+\.name=' } | ForEach-Object { ($_ -split '\.name=')[0] } | Sort-Object -Unique
-          $json = $ids | ConvertTo-Json -Compress
-          echo "boards=$json" >> $env:GITHUB_OUTPUT
-          echo "Detected boards: $json"
+          # Parse board IDs and their chip types from boards.txt
+          $boardChipMap = @{}
+          Get-Content boards.txt | ForEach-Object {
+            if ($_ -match '^([^#][A-Za-z0-9_]+)\.build\.chip=(.+)$') {
+              $boardChipMap[$Matches[1]] = $Matches[2].Trim()
+            }
+          }
+
+          # Find all .ino example files
+          $allSketches = Get-ChildItem -Path "libraries" -Filter "*.ino" -Recurse | ForEach-Object { $_.FullName -replace '\\','/' -replace '.*/arduino-TuyaOpen/','' }
+          # Normalize to relative paths from repo root
+          $repoRoot = (Get-Location).Path -replace '\\','/'
+          $allSketches = Get-ChildItem -Path "libraries" -Filter "*.ino" -Recurse | ForEach-Object {
+            $rel = $_.FullName -replace '\\','/'
+            $rel = $rel.Substring($repoRoot.Length + 1)
+            $rel
+          }
+
+          echo "All sketches found:"
+          $allSketches | ForEach-Object { echo "  - $_" }
+
+          # Build matrix: T5 chip boards get all examples, others get only SimpleExample
+          $matrix = @()
+          foreach ($board in ($boardChipMap.Keys | Sort-Object)) {
+            $chip = $boardChipMap[$board]
+            if ($chip -eq "T5") {
+              # T5 series: compile all examples
+              foreach ($sketch in $allSketches) {
+                $matrix += @{ board = $board; sketch = $sketch }
+              }
+            } else {
+              # Other boards: only compile SimpleExample
+              $matrix += @{ board = $board; sketch = "libraries/AIcomponents/examples/00_IoT_SimpleExample/00_IoT_SimpleExample.ino" }
+            }
+          }
+
+          $json = ConvertTo-Json -Compress @{ include = $matrix }
+          echo "matrix=$json" >> $env:GITHUB_OUTPUT
+          echo "Total compile jobs: $($matrix.Count)"
+          echo "T5 boards: $(($boardChipMap.GetEnumerator() | Where-Object { $_.Value -eq 'T5' } | ForEach-Object { $_.Key }) -join ', ')"
+          echo "Other boards: $(($boardChipMap.GetEnumerator() | Where-Object { $_.Value -ne 'T5' } | ForEach-Object { $_.Key }) -join ', ')"
         shell: pwsh
 
-  # Job 2: Compile example for each board on Windows
+  # Job 2: Compile examples for each board on Windows
   compile:
     needs: get-boards
     runs-on: windows-latest
     strategy:
       fail-fast: false
-      matrix:
-        board: ${{ fromJson(needs.get-boards.outputs.board-list) }}
+      matrix: ${{ fromJson(needs.get-boards.outputs.matrix) }}
 
     steps:
       - name: Checkout repository
@@ -41,10 +76,8 @@ jobs:
 
       - name: Download and setup arduino-cli
         run: |
-          # Download arduino-cli for Windows
           Invoke-WebRequest -Uri "https://downloads.arduino.cc/arduino-cli/arduino-cli_latest_Windows_64bit.zip" -OutFile "arduino-cli.zip"
           Expand-Archive -Path "arduino-cli.zip" -DestinationPath "$env:USERPROFILE\arduino-cli"
-          # Add to PATH
           echo "$env:USERPROFILE\arduino-cli" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
         shell: pwsh
 
@@ -66,7 +99,6 @@ jobs:
             Write-Error "Failed to install tuya_open core. The board package download may have failed."
             exit 1
           }
-          # Verify installation
           $installed = arduino-cli core list
           echo "Installed cores:"
           echo $installed
@@ -77,10 +109,10 @@ jobs:
           echo "tuya_open core installed successfully."
         shell: pwsh
 
-      - name: Compile example for ${{ matrix.board }}
+      - name: Compile ${{ matrix.sketch }} for ${{ matrix.board }}
         run: |
           $fqbn = "tuya_open:tuya_open:${{ matrix.board }}"
-          $sketch = "libraries/AIcomponents/examples/00_IoT_SimpleExample/00_IoT_SimpleExample.ino"
+          $sketch = "${{ matrix.sketch }}"
           echo "=========================================="
           echo "Board:  ${{ matrix.board }}"
           echo "FQBN:   $fqbn"
@@ -88,7 +120,7 @@ jobs:
           echo "=========================================="
           arduino-cli compile --fqbn $fqbn $sketch --verbose
           if ($LASTEXITCODE -ne 0) {
-            Write-Error "Compilation failed for board: ${{ matrix.board }}"
+            Write-Error "Compilation failed for board: ${{ matrix.board }}, sketch: $sketch"
             exit 1
           }
         shell: pwsh
@@ -107,8 +139,6 @@ jobs:
           } else {
             $summary += "❌ Some boards failed to compile. Please check the logs above.`n"
           }
-          $summary += "`n**Boards tested:** ${{ needs.get-boards.outputs.board-list }}`n"
-          $summary += "`n**Example:** ``libraries/AIcomponents/examples/00_IoT_SimpleExample/00_IoT_SimpleExample.ino```n"
+          $summary += "`n**Note:** T5 series boards compile all examples; other boards compile only 00_IoT_SimpleExample.`n"
           $summary | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
         shell: pwsh
-          echo "**Example:** \`libraries/AIcomponents/examples/00_IoT_SimpleExample/00_IoT_SimpleExample.ino\`" >> $GITHUB_STEP_SUMMARY

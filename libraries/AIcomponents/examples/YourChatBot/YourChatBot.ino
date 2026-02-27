@@ -18,7 +18,6 @@
 #include "appMCP.h"
 #include "appStatus.h"
 #include "appAudioRecord.h"
-
 /***********************************************************
 ************************macro define************************
 ***********************************************************/
@@ -40,7 +39,7 @@
 ***********************************************************/
 static void tuyaIoTEventCallback(tuya_event_msg_t *event);
 static void aiEventCallback(AI_USER_EVT_TYPE_E event, uint8_t *data, uint32_t len, void *arg);
-static void     aiStateCallback(AI_MODE_STATE_E state);
+static void    aiStateCallback(AI_MODE_STATE_E state);
 static void handleUserInput();
 /***********************************************************
 ***********************variable define**********************
