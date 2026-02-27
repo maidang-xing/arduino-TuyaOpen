@@ -69,8 +69,10 @@ jobs:
 
       - name: Install tuya_open core
         run: |
+          $pkgJson = (Resolve-Path "package.json").Path -replace '\\','/'
+          $pkgUrl = "file:///$pkgJson"
           arduino-cli config init --overwrite
-          arduino-cli config add board_manager.additional_urls https://github.com/maidang-xing/arduino-tuyaopen/releases/download/global/package_tuya_open_index.json
+          arduino-cli config add board_manager.additional_urls $pkgUrl
           arduino-cli core update-index
           if ($LASTEXITCODE -ne 0) { Write-Error "Failed to update core index."; exit 1 }
           arduino-cli core install tuya_open:tuya_open
