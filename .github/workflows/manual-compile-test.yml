@@ -30,7 +30,6 @@ jobs:
           $inputBoard = "${{ github.event.inputs.board }}"
           $inputSketch = "${{ github.event.inputs.sketch }}"
 
-          # Parse board IDs and their chip types from boards.txt
           $boardChipMap = @{}
           Get-Content boards.txt | ForEach-Object {
             if ($_ -match '^([^#][A-Za-z0-9_]+)\.build\.chip=(.+)$') {
@@ -38,37 +37,28 @@ jobs:
             }
           }
 
-          # Determine which boards to compile
           if ([string]::IsNullOrWhiteSpace($inputBoard)) {
             $boards = $boardChipMap.Keys | Sort-Object
-            echo "Compiling all boards"
           } else {
             $boards = @($inputBoard)
-            echo "Compiling specific board: $inputBoard"
           }
 
-          # Find all .ino example files
           $repoRoot = (Get-Location).Path -replace '\\','/'
           $allSketches = Get-ChildItem -Path "libraries" -Filter "*.ino" -Recurse | ForEach-Object {
             $rel = $_.FullName -replace '\\','/'
             $rel.Substring($repoRoot.Length + 1)
           }
 
-          # Build matrix
           $matrix = @()
           foreach ($board in $boards) {
             $chip = $boardChipMap[$board]
-
             if (-not [string]::IsNullOrWhiteSpace($inputSketch)) {
-              # User specified a sketch, use it for all boards
               $matrix += @{ board = $board; sketch = $inputSketch }
             } elseif ($chip -eq "T5") {
-              # T5 series: compile all examples
               foreach ($sketch in $allSketches) {
                 $matrix += @{ board = $board; sketch = $sketch }
               }
             } else {
-              # Other boards: only compile SimpleExample
               $matrix += @{ board = $board; sketch = "libraries/AIcomponents/examples/00_IoT_SimpleExample/00_IoT_SimpleExample.ino" }
             }
           }
@@ -90,58 +80,32 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Download and setup arduino-cli
+      - name: Setup arduino-cli
         run: |
-          # Download arduino-cli for Windows
           Invoke-WebRequest -Uri "https://downloads.arduino.cc/arduino-cli/arduino-cli_latest_Windows_64bit.zip" -OutFile "arduino-cli.zip"
           Expand-Archive -Path "arduino-cli.zip" -DestinationPath "$env:USERPROFILE\arduino-cli"
-          # Add to PATH
           echo "$env:USERPROFILE\arduino-cli" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
-        shell: pwsh
-
-      - name: Configure arduino-cli
-        run: |
-          arduino-cli config init --overwrite
-          arduino-cli config add board_manager.additional_urls https://github.com/tuya/arduino-tuyaopen/releases/download/global/package_tuya_open_index.json
-          arduino-cli core update-index
-          if ($LASTEXITCODE -ne 0) {
-            Write-Error "Failed to update core index. Please check the board manager URL."
-            exit 1
-          }
         shell: pwsh
 
       - name: Install tuya_open core
         run: |
+          arduino-cli config init --overwrite
+          arduino-cli config add board_manager.additional_urls https://github.com/maidang-xing/arduino-tuyaopen/releases/download/global/package_tuya_open_index.json
+          arduino-cli core update-index
+          if ($LASTEXITCODE -ne 0) { Write-Error "Failed to update core index."; exit 1 }
           arduino-cli core install tuya_open:tuya_open
-          if ($LASTEXITCODE -ne 0) {
-            Write-Error "Failed to install tuya_open core. The board package download may have failed."
-            exit 1
-          }
-          # Verify installation
-          $installed = arduino-cli core list
-          echo "Installed cores:"
-          echo $installed
-          if ($installed -notmatch 'tuya_open') {
-            Write-Error "tuya_open core is not found in installed cores. Installation failed."
-            exit 1
-          }
-          echo "tuya_open core installed successfully."
+          if ($LASTEXITCODE -ne 0) { Write-Error "Failed to install tuya_open core."; exit 1 }
+          $installedStr = (arduino-cli core list) -join "`n"
+          if ($installedStr -notmatch 'tuya_open') { Write-Error "tuya_open core not found after install."; exit 1 }
         shell: pwsh
 
       - name: Compile ${{ matrix.sketch }} for ${{ matrix.board }}
         run: |
           $fqbn = "tuya_open:tuya_open:${{ matrix.board }}"
           $sketch = "${{ matrix.sketch }}"
-          echo "=========================================="
-          echo "Board:  ${{ matrix.board }}"
-          echo "FQBN:   $fqbn"
-          echo "Sketch: $sketch"
-          echo "=========================================="
-          arduino-cli compile --fqbn $fqbn $sketch --verbose
-          if ($LASTEXITCODE -ne 0) {
-            Write-Error "Compilation failed for board: ${{ matrix.board }}, sketch: $sketch"
-            exit 1
-          }
+          echo "Board: ${{ matrix.board }} | Sketch: $sketch"
+          arduino-cli compile --fqbn $fqbn $sketch
+          if ($LASTEXITCODE -ne 0) { Write-Error "Compilation failed for ${{ matrix.board }}: $sketch"; exit 1 }
         shell: pwsh
 
   # Job 3: Summary
