@@ -1,12 +1,7 @@
 /**
- * @file tuya_app_main.cpp
- * @author www.tuya.com
- * @brief tuya_app_main module is used to
- * @version 0.1
- * @date 2024-08-20
- *
- * @copyright Copyright (c) tuya.inc 2024
- *
+ * @file tuya_app_main.c
+ * @brief tuya_app_main module
+ * @copyright Copyright (c) 2021-2026 Tuya Inc. All Rights Reserved.
  */
 #include "tuya_iot_config.h"
 

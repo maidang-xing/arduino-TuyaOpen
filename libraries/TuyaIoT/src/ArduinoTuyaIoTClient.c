@@ -1,3 +1,9 @@
+/**
+ * @file ArduinoTuyaIoTClient.c
+ * @brief Arduino Tuya IoT client implementation
+ * @copyright Copyright (c) 2021-2026 Tuya Inc. All Rights Reserved.
+ */
+
 /******************************************************************************
  * INCLUDE
  ******************************************************************************/

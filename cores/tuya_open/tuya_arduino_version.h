@@ -1,3 +1,9 @@
+/**
+ * @file tuya_arduino_version.h
+ * @brief Arduino Tuya Open version definition
+ * @copyright Copyright (c) 2021-2026 Tuya Inc. All Rights Reserved.
+ */
+
 #ifndef __TUYA_ARDUINO_VERSION_H__
 #define __TUYA_ARDUINO_VERSION_H__
 

@@ -7,7 +7,7 @@
  * This example is intended for developers looking to create IoT applications that require switch capabilities
  * and integration with the Tuya IoT ecosystem.
  *
- * @copyright Copyright (c) 2021-2025 Tuya Inc. All Rights Reserved.
+ * @copyright Copyright (c) 2021-2026 Tuya Inc. All Rights Reserved.
  */
 #include "Log.h"
 #include "TuyaIoT.h"

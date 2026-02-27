@@ -1,3 +1,9 @@
+/**
+ * @file TuyaIoT.cpp
+ * @brief Tuya IoT Arduino library implementation
+ * @copyright Copyright (c) 2021-2026 Tuya Inc. All Rights Reserved.
+ */
+
 /******************************************************************************
  * INCLUDE
  ******************************************************************************/
