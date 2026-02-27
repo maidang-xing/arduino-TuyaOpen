@@ -48,9 +48,38 @@ jobs:
           echo "Total board jobs: $($matrix.Count)"
         shell: pwsh
 
-  # Job 2: Compile examples for each board on Windows
+  # Job 2: Verify package_cn.json can install successfully
+  check-package-cn:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup arduino-cli
+        run: |
+          Invoke-WebRequest -Uri "https://downloads.arduino.cc/arduino-cli/arduino-cli_latest_Windows_64bit.zip" -OutFile "arduino-cli.zip"
+          Expand-Archive -Path "arduino-cli.zip" -DestinationPath "$env:USERPROFILE\arduino-cli"
+          echo "$env:USERPROFILE\arduino-cli" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
+        shell: pwsh
+
+      - name: Install tuya_open core via package_cn.json
+        run: |
+          $pkgCnJson = (Resolve-Path "package_cn.json").Path -replace '\\','/'
+          $pkgUrl = "file:///$pkgCnJson"
+          arduino-cli config init --overwrite
+          arduino-cli config add board_manager.additional_urls $pkgUrl
+          arduino-cli core update-index
+          if ($LASTEXITCODE -ne 0) { Write-Error "Failed to update core index with package_cn.json."; exit 1 }
+          arduino-cli core install tuya_open:tuya_open
+          if ($LASTEXITCODE -ne 0) { Write-Error "Failed to install tuya_open core via package_cn.json."; exit 1 }
+          $installedStr = (arduino-cli core list) -join "`n"
+          if ($installedStr -notmatch 'tuya_open') { Write-Error "tuya_open core not found after install via package_cn.json."; exit 1 }
+          echo "package_cn.json install check passed."
+        shell: pwsh
+
+  # Job 3: Compile examples for each board on Windows
   compile:
-    needs: get-boards
+    needs: [get-boards, check-package-cn]
     runs-on: windows-latest
     strategy:
       fail-fast: false
@@ -104,15 +133,18 @@ jobs:
           echo "All $total sketch(es) compiled successfully for ${{ matrix.board }}"
         shell: pwsh
 
-  # Job 3: Summary
+  # Job 4: Summary
   compile-result:
-    needs: [get-boards, compile]
+    needs: [get-boards, check-package-cn, compile]
     runs-on: windows-latest
     if: always()
     steps:
       - name: Compile result summary
         run: |
           $summary = "## Compile Check Summary`n`n"
+          if ("${{ needs.check-package-cn.result }}" -ne "success") {
+            $summary += "❌ package_cn.json install check failed.`n`n"
+          }
           if ("${{ needs.compile.result }}" -eq "success") {
             $summary += "✅ All boards compiled successfully!`n"
           } else {
