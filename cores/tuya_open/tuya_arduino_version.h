@@ -9,15 +9,17 @@ extern "C" {
 // Minor version number (x.X.x)
 #define VERSION_ARDUINO_TUYA_MINOR 2
 // Patch version number (x.x.X)
-#define VERSION_ARDUINO_TUYA_PATCH 0
+#define VERSION_ARDUINO_TUYA_PATCH 1
 
 // Version number (in numeric form)
-#define VERSION_ARDUINO_TUYA ((VERSION_ARDUINO_TUYA_MAJOR << 16) | (VERSION_ARDUINO_TUYA_MINOR << 8) | VERSION_ARDUINO_TUYA_PATCH)
+#define VERSION_ARDUINO_TUYA                                                                                           \
+    ((VERSION_ARDUINO_TUYA_MAJOR << 16) | (VERSION_ARDUINO_TUYA_MINOR << 8) | VERSION_ARDUINO_TUYA_PATCH)
 
 // Version string (in string form)
 #define df2str(x) #x
-#define d2str(x) df2str(x)
-#define VERSION_ARDUINO_TUYA_STR d2str(VERSION_ARDUINO_TUYA_MAJOR) "." d2str(VERSION_ARDUINO_TUYA_MINOR) "." d2str(VERSION_ARDUINO_TUYA_PATCH)
+#define d2str(x)  df2str(x)
+#define VERSION_ARDUINO_TUYA_STR                                                                                       \
+    d2str(VERSION_ARDUINO_TUYA_MAJOR) "." d2str(VERSION_ARDUINO_TUYA_MINOR) "." d2str(VERSION_ARDUINO_TUYA_PATCH)
 
 #ifdef __cplusplus
 }

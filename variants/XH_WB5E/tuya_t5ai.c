@@ -2,7 +2,7 @@
  * @file tuya_t5ai.c
  * @brief tuya_t5ai module is used to
  * @version 0.1
- * @copyright Copyright (c) 2021-2025 Tuya Inc. All Rights Reserved.
+ * @copyright Copyright (c) 2021-2026 Tuya Inc. All Rights Reserved.
  */
 
 #include "tuya_cloud_types.h"
