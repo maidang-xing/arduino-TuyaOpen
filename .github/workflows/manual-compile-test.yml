@@ -1,0 +1,106 @@
+name: Manual Compile Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      board:
+        description: 'Board to compile (leave empty to compile all boards)'
+        required: false
+        default: ''
+        type: string
+      sketch:
+        description: 'Sketch path to compile'
+        required: false
+        default: 'libraries/AIcomponents/examples/00_IoT_SimpleExample/00_IoT_SimpleExample.ino'
+        type: string
+
+jobs:
+  # Job 1: Determine boards to compile
+  get-boards:
+    runs-on: ubuntu-latest
+    outputs:
+      board-list: ${{ steps.parse.outputs.boards }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Determine board list
+        id: parse
+        run: |
+          INPUT_BOARD="${{ github.event.inputs.board }}"
+          if [ -z "$INPUT_BOARD" ]; then
+            # No board specified, parse all boards from boards.txt
+            BOARDS=$(grep -E '^[^#][A-Za-z0-9_]+\.name=' boards.txt | sed 's/\.name=.*//' | sort -u | jq -R -s -c 'split("\n") | map(select(length > 0))')
+            echo "Compiling all boards: $BOARDS"
+          else
+            # Specific board specified
+            BOARDS=$(echo "[\"$INPUT_BOARD\"]")
+            echo "Compiling specific board: $BOARDS"
+          fi
+          echo "boards=$BOARDS" >> "$GITHUB_OUTPUT"
+
+  # Job 2: Compile on Windows
+  compile:
+    needs: get-boards
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        board: ${{ fromJson(needs.get-boards.outputs.board-list) }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download and setup arduino-cli
+        run: |
+          # Download arduino-cli for Windows
+          Invoke-WebRequest -Uri "https://downloads.arduino.cc/arduino-cli/arduino-cli_latest_Windows_64bit.zip" -OutFile "arduino-cli.zip"
+          Expand-Archive -Path "arduino-cli.zip" -DestinationPath "$env:USERPROFILE\arduino-cli"
+          # Add to PATH
+          echo "$env:USERPROFILE\arduino-cli" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
+        shell: pwsh
+
+      - name: Configure arduino-cli
+        run: |
+          arduino-cli config init --overwrite
+          arduino-cli config add board_manager.additional_urls https://github.com/maidang-xing/arduino-TuyaOpen/releases/download/globel/package_tuya_open_index.json
+          arduino-cli core update-index
+        shell: pwsh
+
+      - name: Install tuya_open core
+        run: |
+          arduino-cli core install tuya_open:tuya_open
+        shell: pwsh
+
+      - name: Compile ${{ github.event.inputs.sketch }} for ${{ matrix.board }}
+        run: |
+          $fqbn = "tuya_open:tuya_open:${{ matrix.board }}"
+          $sketch = "${{ github.event.inputs.sketch }}"
+          echo "=========================================="
+          echo "Board:  ${{ matrix.board }}"
+          echo "FQBN:   $fqbn"
+          echo "Sketch: $sketch"
+          echo "=========================================="
+          arduino-cli compile --fqbn $fqbn $sketch --verbose
+        shell: pwsh
+
+  # Job 3: Summary
+  compile-result:
+    needs: [get-boards, compile]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Compile result summary
+        run: |
+          echo "## Manual Compile Test Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ needs.compile.result }}" == "success" ]; then
+            echo "✅ All selected boards compiled successfully!" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Some boards failed to compile. Please check the logs above." >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Boards tested:** ${{ needs.get-boards.outputs.board-list }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Sketch:** \`${{ github.event.inputs.sketch }}\`" >> $GITHUB_STEP_SUMMARY
