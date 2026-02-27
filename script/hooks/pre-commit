@@ -17,7 +17,7 @@ fi
 
 # We only filter the file name with c or cpp file.
 changed_files=$(git diff-index --cached $against | \
-	grep -E '[MA]	.*\.(c|cpp|h)$' | cut -d'	' -f 2)
+	grep -E '[MA]	.*\.(c|cpp|h|ino)$' | cut -d'	' -f 2)
 
 if which clang-format > /dev/null; then 
 	if [ -n "$changed_files" ]; then
