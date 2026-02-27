@@ -64,7 +64,7 @@ jobs:
       - name: Configure arduino-cli
         run: |
           arduino-cli config init --overwrite
-          arduino-cli config add board_manager.additional_urls https://github.com/maidang-xing/arduino-TuyaOpen/releases/download/globel/package_tuya_open_index.json
+          arduino-cli config add board_manager.additional_urls https://github.com/maidang-xing/arduino-TuyaOpen/releases/download/global/package_tuya_open_index.json
           arduino-cli core update-index
         shell: pwsh
 

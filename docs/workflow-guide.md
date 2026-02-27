@@ -44,7 +44,7 @@
 
 - 运行平台：`windows-latest`
 - 工具：`arduino-cli`（自动从官方下载最新版本）
-- 开发板包来源：[package_tuya_open_index.json](https://github.com/maidang-xing/arduino-TuyaOpen/releases/download/globel/package_tuya_open_index.json)
+- 开发板包来源：[package_tuya_open_index.json](https://github.com/maidang-xing/arduino-TuyaOpen/releases/download/global/package_tuya_open_index.json)
 
 ---
 
