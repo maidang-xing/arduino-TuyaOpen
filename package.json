@@ -12,15 +12,95 @@
         {
           "name": "Tuya Open",
           "architecture": "tuya_open",
+          "version": "1.2.2",
+          "category": "Contributed",
+          "help": {
+            "online": ""
+          },
+          "url": "https://github.com/maidang-xing/arduino-TuyaOpen/releases/download/1.2.2/arduino_tuya_open-1.2.2.zip",
+          "archiveFileName": "arduino_tuya_open-1.2.2.zip",
+          "size": "624677",
+          "checksum": "SHA-256:4919dfd053bb5bb0f61483369b68cecdc3c16956e6d0a678e7af93a092874643",
+          "help": {
+            "online": ""
+          },
+          "boards": [
+            {
+              "name": "t2"
+            },
+            {
+              "name": "t3"
+            },
+            {
+              "name": "t5"
+            },
+            {
+              "name": "ln882h"
+            },
+            {
+              "name": "esp32"
+            }
+          ],
+          "toolsDependencies": [
+            {
+              "packager": "tuya_open",
+              "name": "gcc-arm-none-eabi",
+              "version": "10.3"
+            },
+            {
+              "packager": "tuya_open",
+              "name": "xtensa-esp-elf",
+              "version": "13.2.0"
+            },
+            {
+              "packager": "tuya_open",
+              "name": "vendor-t2",
+              "version": "1.0.2"
+            },
+            {
+              "packager": "tuya_open",
+              "name": "vendor-t3",
+              "version": "0.0.4"
+            },
+            {
+              "packager": "tuya_open",
+              "name": "vendor-T5",
+              "version": "0.0.8"
+            },
+            {
+              "packager": "tuya_open",
+              "name": "vendor-ln882h",
+              "version": "0.0.2"
+            },
+            {
+              "packager": "tuya_open",
+              "name": "vendor-esp32",
+              "version": "0.0.4"
+            },
+            {
+              "packager": "tuya_open",
+              "name": "env-python",
+              "version": "3.12.4"
+            },
+            {
+              "packager": "tuya_open",
+              "name": "tyutool",
+              "version": "2.1.0"
+            }
+          ]
+        },
+        {
+          "name": "Tuya Open",
+          "architecture": "tuya_open",
           "version": "1.2.1",
           "category": "Contributed",
           "help": {
             "online": ""
           },
-          "url": "https://github.com/maidang-xing/arduino-TuyaOpen/releases/download/1.2.1/arduino_tuya_open-1.2.1.zip",
+          "url": "https://github.com/tuya/arduino-Tuyaopen/releases/download/1.2.1/arduino_tuya_open-1.2.1.zip",
           "archiveFileName": "arduino_tuya_open-1.2.1.zip",
-          "size": "624678",
-          "checksum": "SHA-256:4cdad1e112ed64fce6d8417304880a27cf32c1f68fc2977ef8e01ec0e0347c68",
+          "size": "622202",
+          "checksum": "SHA-256:2e02c1d2bf4deb83fd88756b3fcf0e4ada63e8c11ce571e5504444ac42d4527f",
           "help": {
             "online": ""
           },
@@ -1419,28 +1499,28 @@
           "systems": [
             {
               "host": "x86_64-linux-gnu",
-              "url": "https://github.com/maidang-xing/arduino-TuyaOpen/releases/download/1.2.1/vendor-T5-0.0.8.tar.bz2",
+              "url": "https://github.com/tuya/arduino-tuyaopen/releases/download/1.2.1/vendor-T5-0.0.8.tar.bz2",
               "archiveFileName": "vendor-T5-0.0.8.tar.bz2",
               "size": "102553480",
               "checksum": "SHA-256:36939d556f4b3d5f8e30bc3e2029cc745b6fde4b815f19dffc0322697b0e9ac6"
             },
             {
               "host": "x86_64-cygwin",
-              "url": "https://github.com/maidang-xing/arduino-TuyaOpen/releases/download/1.2.1/vendor-T5-0.0.8.tar.bz2",
+              "url": "https://github.com/tuya/arduino-tuyaopen/releases/download/1.2.1/vendor-T5-0.0.8.tar.bz2",
               "archiveFileName": "vendor-T5-0.0.8.tar.bz2",
               "size": "102553480",
               "checksum": "SHA-256:36939d556f4b3d5f8e30bc3e2029cc745b6fde4b815f19dffc0322697b0e9ac6"
             },
             {
               "host": "arm64-apple-darwin",
-              "url": "https://github.com/maidang-xing/arduino-TuyaOpen/releases/download/1.2.1/vendor-T5-0.0.8.tar.bz2",
+              "url": "https://github.com/tuya/arduino-tuyaopen/releases/download/1.2.1/vendor-T5-0.0.8.tar.bz2",
               "archiveFileName": "vendor-T5-0.0.8.tar.bz2",
               "size": "102553480",
               "checksum": "SHA-256:36939d556f4b3d5f8e30bc3e2029cc745b6fde4b815f19dffc0322697b0e9ac6"
             },
             {
               "host": "x86_64-apple-darwin",
-              "url": "https://github.com/maidang-xing/arduino-TuyaOpen/releases/download/1.2.1/vendor-T5-0.0.8.tar.bz2",
+              "url": "https://github.com/tuya/arduino-tuyaopen/releases/download/1.2.1/vendor-T5-0.0.8.tar.bz2",
               "archiveFileName": "vendor-T5-0.0.8.tar.bz2",
               "size": "102553480",
               "checksum": "SHA-256:36939d556f4b3d5f8e30bc3e2029cc745b6fde4b815f19dffc0322697b0e9ac6"
@@ -1759,28 +1839,28 @@
           "systems": [
             {
               "host": "x86_64-linux-gnu",
-              "url": "https://github.com/maidang-xing/arduino-TuyaOpen/releases/download/1.2.1/vendor-esp32-0.0.4.tar.bz2",
+              "url": "https://github.com/tuya/arduino-tuyaopen/releases/download/1.2.1/vendor-esp32-0.0.4.tar.bz2",
               "archiveFileName": "vendor-esp32-0.0.4.tar.bz2",
               "size": "202742748",
               "checksum": "SHA-256:28607ef25980c3979ebe21d9307ce5dccd38428ddebee79f9c86e3203cd26382"
             },
             {
               "host": "x86_64-cygwin",
-              "url": "https://github.com/maidang-xing/arduino-TuyaOpen/releases/download/1.2.1/vendor-esp32-0.0.4.tar.bz2",
+              "url": "https://github.com/tuya/arduino-tuyaopen/releases/download/1.2.1/vendor-esp32-0.0.4.tar.bz2",
               "archiveFileName": "vendor-esp32-0.0.4.tar.bz2",
               "size": "202742748",
               "checksum": "SHA-256:28607ef25980c3979ebe21d9307ce5dccd38428ddebee79f9c86e3203cd26382"
             },
             {
               "host": "arm64-apple-darwin",
-              "url": "https://github.com/maidang-xing/arduino-TuyaOpen/releases/download/1.2.1/vendor-esp32-0.0.4.tar.bz2",
+              "url": "https://github.com/tuya/arduino-tuyaopen/releases/download/1.2.1/vendor-esp32-0.0.4.tar.bz2",
               "archiveFileName": "vendor-esp32-0.0.4.tar.bz2",
               "size": "202742748",
               "checksum": "SHA-256:28607ef25980c3979ebe21d9307ce5dccd38428ddebee79f9c86e3203cd26382"
             },
             {
               "host": "x86_64-apple-darwin",
-              "url": "https://github.com/maidang-xing/arduino-TuyaOpen/releases/download/1.2.1/vendor-esp32-0.0.4.tar.bz2",
+              "url": "https://github.com/tuya/arduino-tuyaopen/releases/download/1.2.1/vendor-esp32-0.0.4.tar.bz2",
               "archiveFileName": "vendor-esp32-0.0.4.tar.bz2",
               "size": "202742748",
               "checksum": "SHA-256:28607ef25980c3979ebe21d9307ce5dccd38428ddebee79f9c86e3203cd26382"
