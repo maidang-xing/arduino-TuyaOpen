@@ -177,7 +177,7 @@ jobs:
             --version "$TAG" \
             --target "${{ matrix.platform }}" \
             --output "${{ github.workspace }}/output"
-        timeout-minutes: 120
+        timeout-minutes: 180
 
       - name: Upload vendor artifact - ${{ matrix.platform }}
         uses: actions/upload-artifact@v5

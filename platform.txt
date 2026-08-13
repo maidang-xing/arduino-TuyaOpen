@@ -1,5 +1,5 @@
 name=Tuya
-version=1.2.1
+version=1.2.6
 
 # Language menu defaults (only T5-family boards override these via menu.Language)
 build.lang_flags=
