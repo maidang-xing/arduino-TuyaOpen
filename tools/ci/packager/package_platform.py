@@ -2,6 +2,7 @@
 
 import os
 import re
+import sys
 import shutil
 import logging
 import subprocess
@@ -65,19 +66,59 @@ class PackagePlatform:
         logging.info(f"Copy {ini_file} to {app_ini_file}")
         return True
 
+    def install_clone_requirements(self):
+        """Install the clone's Python deps so tos.py can run.
+
+        Upstream moved its deps from a root requirements.txt into
+        pyproject.toml (kconfiglib et al.) plus tools/requirements.txt, so
+        try every layout and fail loudly: a silently skipped install leaves
+        tos.py without kconfiglib on a fresh CI runner.
+        """
+        installed_any = False
+
+        for req in [
+            os.path.join(self.clone_path, "requirements.txt"),
+            os.path.join(self.clone_path, "tools", "requirements.txt"),
+        ]:
+            if not os.path.exists(req):
+                continue
+            result = subprocess.run(
+                [sys.executable, "-m", "pip", "install", "-q", "-r", req],
+                capture_output=True,
+                text=True,
+            )
+            if result.returncode != 0:
+                logging.error(f"pip install -r {req} failed: {result.stderr[-2000:]}")
+                return False
+            installed_any = True
+            logging.info(f"Installed python deps from {req}")
+
+        if os.path.exists(os.path.join(self.clone_path, "pyproject.toml")):
+            result = subprocess.run(
+                [sys.executable, "-m", "pip", "install", "-q", self.clone_path],
+                capture_output=True,
+                text=True,
+            )
+            if result.returncode != 0:
+                logging.error(
+                    f"pip install {self.clone_path} failed: {result.stderr[-2000:]}"
+                )
+                return False
+            installed_any = True
+            logging.info("Installed python deps from pyproject.toml")
+
+        if not installed_any:
+            logging.warning("No python requirements found in clone")
+        return True
+
     def build_platform(self):
         tos = os.path.join(self.clone_path, "tos.py")
         if not os.path.exists(tos):
             logging.error(f"tos.py not found: {tos}")
             return False
 
-        requirements = os.path.join(self.clone_path, "requirements.txt")
-        if os.path.exists(requirements):
-            subprocess.run(
-                ["pip", "install", "-r", requirements],
-                capture_output=True,
-                text=True,
-            )
+        if not self.install_clone_requirements():
+            return False
 
         work_dir = self.build_app_path
 

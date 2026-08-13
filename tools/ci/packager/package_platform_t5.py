@@ -377,13 +377,8 @@ class PackagePlatformT5(PackagePlatform):
             logging.error(f"tos.py not found: {tos}")
             return False
 
-        requirements = os.path.join(self.clone_path, "requirements.txt")
-        if os.path.exists(requirements):
-            subprocess.run(
-                ["pip", "install", "-r", requirements],
-                capture_output=True,
-                text=True,
-            )
+        if not self.install_clone_requirements():
+            return False
 
         work_dir = self.build_app_path
         if not os.path.exists(work_dir):
