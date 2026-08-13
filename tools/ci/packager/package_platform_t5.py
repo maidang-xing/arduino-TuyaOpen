@@ -388,7 +388,8 @@ class PackagePlatformT5(PackagePlatform):
         try:
             subprocess.run(
                 [self.clone_python, tos, "clean", "-f"],
-                cwd=work_dir, capture_output=True, text=True, timeout=60,
+                cwd=work_dir, env=self.clone_env(),
+                capture_output=True, text=True, timeout=60,
             )
             logging.info("Build cache cleaned")
         except Exception as e:
@@ -399,6 +400,7 @@ class PackagePlatformT5(PackagePlatform):
             process = subprocess.Popen(
                 [self.clone_python, tos, "build"],
                 cwd=work_dir,
+                env=self.clone_env(),
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,

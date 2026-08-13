@@ -121,6 +121,23 @@ class PackagePlatform:
             logging.info(f"Installed python deps: {' '.join(target)}")
         return True
 
+    def clone_env(self):
+        """Env for tos.py with the clone's .venv activated.
+
+        Pointing only the outer interpreter at the venv is not enough: the
+        platform build resolves python/cmake/ninja from PATH again (T5's
+        cmake runs confgen.py with the PATH python3), so a runner's bare
+        system python lacks the SDK's deps. Prepend the venv's bin dir the
+        way upstream's export script does.
+        """
+        env = os.environ.copy()
+        venv_dir = os.path.join(self.clone_path, ".venv")
+        bin_dir = os.path.join(venv_dir, "Scripts" if os.name == "nt" else "bin")
+        env["VIRTUAL_ENV"] = venv_dir
+        env["PATH"] = bin_dir + os.pathsep + env.get("PATH", "")
+        env.pop("PYTHONHOME", None)
+        return env
+
     def build_platform(self):
         tos = os.path.join(self.clone_path, "tos.py")
         if not os.path.exists(tos):
@@ -136,6 +153,7 @@ class PackagePlatform:
             subprocess.run(
                 [self.clone_python, tos, "clean", "-f"],
                 cwd=work_dir,
+                env=self.clone_env(),
                 capture_output=True,
                 text=True,
                 timeout=60,
@@ -149,6 +167,7 @@ class PackagePlatform:
             process = subprocess.Popen(
                 [self.clone_python, tos, "build"],
                 cwd=work_dir,
+                env=self.clone_env(),
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
