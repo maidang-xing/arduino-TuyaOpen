@@ -24,6 +24,7 @@ class PackagePlatform:
         self.config_path = config_path or data_path
         self.staging_path = data_path
         self.build_app_path = os.path.join(self.clone_path, self.package_info.build_app)
+        self.clone_python = "python"
         self.handler = PackageHandler()
 
     def git_clone(self):
@@ -67,48 +68,57 @@ class PackagePlatform:
         return True
 
     def install_clone_requirements(self):
-        """Install the clone's Python deps so tos.py can run.
+        """Create the clone's .venv and install its Python deps for tos.py.
 
-        Upstream moved its deps from a root requirements.txt into
-        pyproject.toml (kconfiglib et al.) plus tools/requirements.txt, so
-        try every layout and fail loudly: a silently skipped install leaves
-        tos.py without kconfiglib on a fresh CI runner.
+        Upstream expects tos.py to run inside the .venv its export script
+        creates: cmake/ninja/kconfiglib come from pyproject.toml as pip
+        packages, and tos.py's prepare step looks for cmake/ninja next to
+        sys.executable. Build that venv ourselves (it is gitignored
+        upstream, so it survives clone reuse and CI caching), point
+        self.clone_python at it, and fail loudly on any pip error - a
+        silently skipped install strands tos.py on a fresh CI runner.
         """
-        installed_any = False
+        venv_dir = os.path.join(self.clone_path, ".venv")
+        bin_dir = "Scripts" if os.name == "nt" else "bin"
+        self.clone_python = os.path.join(venv_dir, bin_dir, "python")
 
-        for req in [
-            os.path.join(self.clone_path, "requirements.txt"),
-            os.path.join(self.clone_path, "tools", "requirements.txt"),
-        ]:
-            if not os.path.exists(req):
-                continue
+        if not os.path.exists(self.clone_python):
             result = subprocess.run(
-                [sys.executable, "-m", "pip", "install", "-q", "-r", req],
+                [sys.executable, "-m", "venv", venv_dir],
                 capture_output=True,
                 text=True,
             )
             if result.returncode != 0:
-                logging.error(f"pip install -r {req} failed: {result.stderr[-2000:]}")
+                logging.error(f"venv creation failed: {result.stderr[-2000:]}")
                 return False
-            installed_any = True
-            logging.info(f"Installed python deps from {req}")
+            logging.info(f"Created venv at {venv_dir}")
 
+        targets = []
+        for req in [
+            os.path.join(self.clone_path, "requirements.txt"),
+            os.path.join(self.clone_path, "tools", "requirements.txt"),
+        ]:
+            if os.path.exists(req):
+                targets.append(["-r", req])
         if os.path.exists(os.path.join(self.clone_path, "pyproject.toml")):
+            targets.append([self.clone_path])
+
+        if not targets:
+            logging.warning("No python requirements found in clone")
+            return True
+
+        for target in targets:
             result = subprocess.run(
-                [sys.executable, "-m", "pip", "install", "-q", self.clone_path],
+                [self.clone_python, "-m", "pip", "install", "-q"] + target,
                 capture_output=True,
                 text=True,
             )
             if result.returncode != 0:
                 logging.error(
-                    f"pip install {self.clone_path} failed: {result.stderr[-2000:]}"
+                    f"pip install {' '.join(target)} failed: {result.stderr[-2000:]}"
                 )
                 return False
-            installed_any = True
-            logging.info("Installed python deps from pyproject.toml")
-
-        if not installed_any:
-            logging.warning("No python requirements found in clone")
+            logging.info(f"Installed python deps: {' '.join(target)}")
         return True
 
     def build_platform(self):
@@ -124,7 +134,7 @@ class PackagePlatform:
 
         try:
             subprocess.run(
-                ["python", tos, "clean", "-f"],
+                [self.clone_python, tos, "clean", "-f"],
                 cwd=work_dir,
                 capture_output=True,
                 text=True,
@@ -137,7 +147,7 @@ class PackagePlatform:
         build_lines = []
         try:
             process = subprocess.Popen(
-                ["python", tos, "build"],
+                [self.clone_python, tos, "build"],
                 cwd=work_dir,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,

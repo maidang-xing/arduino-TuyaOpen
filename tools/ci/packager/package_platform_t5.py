@@ -387,7 +387,7 @@ class PackagePlatformT5(PackagePlatform):
 
         try:
             subprocess.run(
-                ["python", tos, "clean", "-f"],
+                [self.clone_python, tos, "clean", "-f"],
                 cwd=work_dir, capture_output=True, text=True, timeout=60,
             )
             logging.info("Build cache cleaned")
@@ -397,7 +397,7 @@ class PackagePlatformT5(PackagePlatform):
         build_lines = []
         try:
             process = subprocess.Popen(
-                ["python", tos, "build"],
+                [self.clone_python, tos, "build"],
                 cwd=work_dir,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
