@@ -14,7 +14,11 @@ class PackagePlatform:
 
     def __init__(self, package_info, data_path, config_path=None):
         self.package_info = package_info
-        self.clone_path = os.path.join(self.package_info.output_path, self.package_info.name)
+        # Clone into the version-independent cache so gitignored toolchain
+        # downloads survive across release versions; fall back to the old
+        # per-version layout when no cache path is provided.
+        clone_root = package_info.cache_path or package_info.output_path
+        self.clone_path = os.path.join(clone_root, self.package_info.name)
         self.data_path = data_path
         self.config_path = config_path or data_path
         self.staging_path = data_path
@@ -362,8 +366,8 @@ class PackagePlatform:
             if os.path.exists(src):
                 self.copy_after_delete(src, os.path.join(flags_path, flag_file))
 
-        vendor_package = os.path.normpath(
-            os.path.join(self.clone_path, "..", self.package_info.package_name)
+        vendor_package = os.path.join(
+            self.package_info.output_path, self.package_info.package_name
         )
         self.handler.compress_package(output_path, vendor_package, "tar.bz2")
 
