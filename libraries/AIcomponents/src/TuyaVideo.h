@@ -99,7 +99,4 @@ private:
     bool _started;
 };
 
-// Global instance
-extern TuyaVideoClass TuyaVideo;
-
 #endif /* __TUYA_VIDEO_H_ */

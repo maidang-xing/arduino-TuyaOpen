@@ -433,6 +433,20 @@ static void _internalEventHandler(AI_NOTIFY_EVENT_T *event)
             }
             break;
 
+        // Picture events - upstream passes the album filename as a C string
+        case AI_USER_EVT_GENERATE_PICTURE:
+        case AI_USER_EVT_GET_PICTURE_FROM_APP:
+            if (event->data) {
+                data = (uint8_t *)event->data;
+                len  = strlen((const char *)event->data);
+            }
+            break;
+
+        // Signalling events that carry no payload
+        case AI_USER_EVT_SEND_PICTURE_END:
+        case AI_USER_EVT_KEY_WAKEUP:
+            break;
+
         // MIC data event - pass raw PCM audio data
         case AI_USER_EVT_MIC_DATA:
             if (event->data) {

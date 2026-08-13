@@ -11,9 +11,6 @@
 ***********************class implementation*****************
 ***********************************************************/
 
-// Global instance
-TuyaPictureClass TuyaPicture;
-
 TuyaPictureClass::TuyaPictureClass()
 {
     _initialized = false;
@@ -75,4 +72,64 @@ OPERATE_RET TuyaPictureClass::saveToAlbum(const uint8_t *data, uint32_t len, con
     }
 
     return OPRT_OK;
+}
+
+OPERATE_RET TuyaPictureClass::recognize(const uint8_t *data, uint32_t len)
+{
+    if (!_initialized || data == nullptr || len == 0) {
+        return OPRT_INVALID_PARM;
+    }
+
+    return ai_picture_input_recognize(const_cast<uint8_t *>(data), len);
+}
+
+OPERATE_RET TuyaPictureClass::attachFromAlbum(const char *filename, const char *text)
+{
+    if (!_initialized || filename == nullptr) {
+        return OPRT_INVALID_PARM;
+    }
+
+    return ai_picture_input_add_from_album(const_cast<char *>(filename), const_cast<char *>(text));
+}
+
+OPERATE_RET TuyaPictureClass::detachFromAlbum(const char *filename)
+{
+    if (!_initialized || filename == nullptr) {
+        return OPRT_INVALID_PARM;
+    }
+
+    return ai_picture_input_del_from_album(const_cast<char *>(filename));
+}
+
+OPERATE_RET TuyaPictureClass::sendAttachments()
+{
+    if (!_initialized) {
+        return OPRT_INVALID_PARM;
+    }
+
+    return ai_picture_input_from_album();
+}
+
+OPERATE_RET TuyaPictureClass::setOutputSize(uint16_t width, uint16_t height)
+{
+    if (!_initialized || width == 0 || height == 0) {
+        return OPRT_INVALID_PARM;
+    }
+
+    return ai_picture_output_set_size(width, height);
+}
+
+OPERATE_RET TuyaPictureClass::beginOutputDownload(uint16_t width, uint16_t height)
+{
+    if (!_initialized || width == 0 || height == 0) {
+        return OPRT_INVALID_PARM;
+    }
+
+    // Upstream only declares this entry point when the download path is built
+    // in, so keep the Arduino API stable and report it as unsupported instead.
+#if defined(ENABLE_COMP_AI_PICTURE_HOSTING_DLD) && (ENABLE_COMP_AI_PICTURE_HOSTING_DLD == 1)
+    return ai_picture_output_dld_init(width, height);
+#else
+    return OPRT_NOT_SUPPORTED;
+#endif
 }

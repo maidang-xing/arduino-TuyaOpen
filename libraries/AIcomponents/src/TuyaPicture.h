@@ -10,6 +10,8 @@
 // Upstream headers already self-guard with extern "C", matching TuyaAI.h
 #include "tuya_cloud_types.h"
 #include "ai_picture.h"
+#include "ai_picture_input.h"
+#include "ai_picture_output.h"
 
 /***********************************************************
 ***********************class definition*********************
@@ -63,11 +65,56 @@ public:
     OPERATE_RET saveToAlbum(const uint8_t *data, uint32_t len, const char *hint = nullptr, char *outName = nullptr,
                             uint32_t outNameSize = 0);
 
+    /**
+     * @brief Send a picture straight to the AI for recognition
+     * @param data JPEG data buffer
+     * @param len  JPEG data length in bytes
+     * @return OPRT_OK on success
+     * @note Completion is reported through AI_USER_EVT_SEND_PICTURE_END.
+     */
+    OPERATE_RET recognize(const uint8_t *data, uint32_t len);
+
+    /**
+     * @brief Queue an album picture as an attachment for the next AI request
+     * @param filename Album filename, as returned by saveToAlbum()
+     * @param text     Question to ask about the picture, may be NULL
+     * @return OPRT_OK on success
+     * @note Up to AI_PICTURE_INPUT_MAX_NUM pictures can be queued.
+     */
+    OPERATE_RET attachFromAlbum(const char *filename, const char *text = nullptr);
+
+    /**
+     * @brief Remove a previously queued album attachment
+     * @param filename Album filename
+     * @return OPRT_OK on success
+     */
+    OPERATE_RET detachFromAlbum(const char *filename);
+
+    /**
+     * @brief Send every queued album attachment to the AI
+     * @return OPRT_OK on success
+     */
+    OPERATE_RET sendAttachments();
+
+    /**
+     * @brief Set the resolution the AI should generate pictures at
+     * @param width  Output width in pixels
+     * @param height Output height in pixels
+     * @return OPRT_OK on success
+     */
+    OPERATE_RET setOutputSize(uint16_t width, uint16_t height);
+
+    /**
+     * @brief Enable downloading generated pictures from cloud file storage
+     * @param width  Output width in pixels
+     * @param height Output height in pixels
+     * @return OPRT_OK on success
+     * @note Requires ENABLE_COMP_AI_PICTURE_HOSTING_DLD in the vendor build.
+     */
+    OPERATE_RET beginOutputDownload(uint16_t width, uint16_t height);
+
 private:
     bool _initialized;
 };
-
-// Global instance
-extern TuyaPictureClass TuyaPicture;
 
 #endif /* __TUYA_PICTURE_H_ */

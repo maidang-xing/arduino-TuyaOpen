@@ -37,7 +37,7 @@
       "chip": "T5AI",
       "version": "0.0.9",
       "sourceRepo": "https://github.com/tuya/TuyaOpen.git",
-      "sourceBranch": "2fbdb83380b388de4481d78ffdc0e62cc57ef401",
+      "sourceBranch": "master",
       "buildApp": "apps/tuya.ai/your_chat_bot",
       "archiveType": "tar.bz2"
     },

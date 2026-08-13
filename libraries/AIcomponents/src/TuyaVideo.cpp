@@ -110,6 +110,3 @@ OPERATE_RET TuyaVideoClass::setYuvFrameCallback(AI_VIDEO_FLUSH_CB cb)
 
     return ai_video_set_yuv_frame_flush_cb(cb);
 }
-
-// Global instance
-TuyaVideoClass TuyaVideo;
