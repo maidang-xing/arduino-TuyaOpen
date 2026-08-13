@@ -104,100 +104,6 @@ class PackagePlatformT5(PackagePlatform):
             f.write("\n".join(vendor_include_list) + "\n")
         return True
 
-    def copy_ai_components_libs(self, output_lib_path):
-        build_app_rel = self.package_info.build_app
-        ai_components_rel = os.path.join(os.path.dirname(build_app_rel), "ai_components")
-        ai_components_build_path = os.path.join(
-            self.build_app_path,
-            ".build", "CMakeFiles", "tuyaapp.dir", ai_components_rel,
-        )
-        if not os.path.exists(ai_components_build_path):
-            logging.warning(f"ai_components build path not exists: {ai_components_build_path}")
-            return True
-
-        libtuyaos_path = os.path.join(output_lib_path, "libtuyaos.a")
-        if not os.path.exists(libtuyaos_path):
-            logging.error(f"libtuyaos.a not found at {libtuyaos_path}")
-            return False
-
-        ai_obj_files = []
-        for root, _, files in os.walk(ai_components_build_path):
-            for f in files:
-                if f.endswith(".o"):
-                    ai_obj_files.append(os.path.join(root, f))
-
-        if not ai_obj_files:
-            logging.warning(f"No .o files found in {ai_components_build_path}")
-            return True
-
-        logging.info(f"Found {len(ai_obj_files)} .o files in ai_components")
-
-        for obj_file in ai_obj_files:
-            result = subprocess.run(["ar", "rcs", libtuyaos_path, obj_file], capture_output=True, text=True)
-            if result.returncode != 0:
-                logging.error(f"Failed to add {obj_file} to libtuyaos.a: {result.stderr}")
-
-        logging.info(f"Merged {len(ai_obj_files)} .o files from ai_components into libtuyaos.a")
-        return True
-
-    def copy_ai_components_headers(self, output_tmp_path):
-        ai_components_src = os.path.join(os.path.dirname(self.build_app_path), "ai_components")
-        if not os.path.exists(ai_components_src):
-            logging.warning(f"ai_components source path not exists: {ai_components_src}")
-            return []
-
-        exclude_headers = ["lang_config.h"]
-        include_paths = []
-
-        clone_src_path = os.path.join(self.clone_path, "src")
-        if not os.path.exists(clone_src_path):
-            logging.warning(f"src path not exists: {clone_src_path}")
-            return []
-
-        clone_ai_dir = os.path.join(clone_src_path, "ai_components")
-        if os.path.exists(clone_ai_dir):
-            shutil.rmtree(clone_ai_dir)
-
-        for root, _, files in os.walk(ai_components_src):
-            header_files = [f for f in files if f.endswith(".h") and f not in exclude_headers]
-            if header_files:
-                rel_path = os.path.relpath(root, ai_components_src)
-                clone_dst_dir = os.path.join(clone_src_path, "ai_components", rel_path)
-                os.makedirs(clone_dst_dir, exist_ok=True)
-
-                for f in header_files:
-                    shutil.copy2(os.path.join(root, f), os.path.join(clone_dst_dir, f))
-
-                include_rel_path = os.path.join("src", "ai_components", rel_path).replace("\\", "/")
-                if rel_path == ".":
-                    include_rel_path = "src/ai_components"
-                if include_rel_path not in include_paths:
-                    include_paths.append(include_rel_path)
-
-        logging.info(f"Found {len(include_paths)} ai_components include paths")
-        return include_paths
-
-    def update_include_tuya_open_with_ai_components(self, include_paths):
-        include_file = os.path.join(self.staging_path, "includes", "include_tuya_open.txt")
-        if not os.path.exists(include_file):
-            logging.error(f"include_tuya_open.txt not exists: {include_file}")
-            return False
-
-        with open(include_file, "r") as f:
-            existing_lines = f.read().splitlines()
-
-        existing_set = set(line.strip() for line in existing_lines if line.strip())
-        new_paths = [p for p in include_paths if p not in existing_set]
-
-        if new_paths:
-            existing_lines.extend(new_paths)
-            with open(include_file, "w") as f:
-                for line in existing_lines:
-                    if line.strip():
-                        f.write(f"{line}\n")
-            logging.info(f"Updated include_tuya_open.txt with {len(new_paths)} new ai_components paths")
-        return True
-
     def copy_tuya_kconfig(self, output_path):
         pass
 
@@ -477,12 +383,6 @@ class PackagePlatformT5(PackagePlatform):
         else:
             logging.error(f"tuya_kconfig.h not found at {tuya_kconfig_src}")
             return False
-
-        logging.info("Processing ai_components...")
-        self.copy_ai_components_libs(output_lib_path)
-        ai_include_paths = self.copy_ai_components_headers(output_tmp_path)
-        if ai_include_paths:
-            self.update_include_tuya_open_with_ai_components(ai_include_paths)
 
         if not self.copy_tuya_open(output_tmp_path):
             return False
