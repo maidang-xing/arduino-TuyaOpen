@@ -217,10 +217,17 @@ class PackagePlatform:
             shutil.copy2(src, dst)
         return True
 
-    def copy_include_dir_from_file(self, src_file, dst):
+    def copy_include_dir_from_file(self, src_file, dst, ignore_filenames=None):
         if not os.path.exists(src_file):
             logging.error(f"Src file not exists: {src_file}")
             return False
+
+        ignore_fn = None
+        if ignore_filenames:
+            ignore_set = set(ignore_filenames)
+
+            def ignore_fn(_dir, names):
+                return [n for n in names if n in ignore_set]
 
         chip = self.package_info.chip
         chip_case_map = {
@@ -248,7 +255,7 @@ class PackagePlatform:
 
             dst_dir = os.path.join(dst, original_include_dir)
             try:
-                shutil.copytree(src_dir, dst_dir, dirs_exist_ok=True)
+                shutil.copytree(src_dir, dst_dir, dirs_exist_ok=True, ignore=ignore_fn)
                 logging.debug(f"Copy {src_dir} to {dst_dir}")
             except Exception as e:
                 logging.error(f"Copy {src_dir} to {dst_dir} failed: {e}")
@@ -311,7 +318,12 @@ class PackagePlatform:
         include_tkl_file = os.path.join(staging, "includes", "include_tkl.txt")
         include_vendor_file = os.path.join(staging, "includes", "include_vendor.txt")
 
-        if not self.copy_include_dir_from_file(include_tuya_open_file, output_path):
+        # Ship only this repo's lang_config.h: upstream generates a localized one
+        # (zh-CN by default) into src/ai_components/assets/include, and two copies
+        # on the include path make the language depend on search order.
+        if not self.copy_include_dir_from_file(
+            include_tuya_open_file, output_path, ignore_filenames={"lang_config.h"}
+        ):
             return False
         logging.info("Copy open sdk include success")
 
