@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import os
+import re
 import shutil
 import logging
 import subprocess
@@ -113,6 +114,74 @@ class PackagePlatform:
             logging.error(f"Build error: {e}")
             return False
 
+        return self.verify_kconfig_applied()
+
+    def verify_kconfig_applied(self):
+        """Assert every symbol in app_default.config survived kconfig resolution.
+
+        set_platform_ini replaces the upstream app_default.config wholesale, and
+        kconfig silently ignores unknown symbols. Without this check, an upstream
+        rename drops a feature from the vendor package with no warning at all.
+        """
+        config_file = os.path.join(self.build_app_path, "app_default.config")
+        kconfig_h = os.path.join(self.build_app_path, ".build", "include", "tuya_kconfig.h")
+
+        if not os.path.exists(config_file):
+            logging.error(f"app_default.config not found: {config_file}")
+            return False
+        if not os.path.exists(kconfig_h):
+            # Some platforms fall back to a prebuilt sdkconfig.h; nothing to check.
+            logging.warning(f"tuya_kconfig.h not found, skipping symbol check: {kconfig_h}")
+            return True
+
+        defines = {}
+        with open(kconfig_h, "r") as f:
+            for line in f:
+                m = re.match(r"^#define\s+([A-Za-z_]\w*)\s*(.*)$", line.strip())
+                if m:
+                    defines[m.group(1)] = m.group(2).strip()
+
+        mismatches = []
+        with open(config_file, "r") as f:
+            for raw in f:
+                line = raw.strip()
+                if not line:
+                    continue
+
+                unset = re.match(r"^#\s*CONFIG_(\w+)\s+is not set$", line)
+                if unset:
+                    name = unset.group(1)
+                    if name in defines:
+                        mismatches.append(f"{name}: expected unset, but defined as {defines[name]}")
+                    continue
+                if line.startswith("#"):
+                    continue
+
+                kv = re.match(r"^CONFIG_(\w+)=(.*)$", line)
+                if not kv:
+                    continue
+                name, value = kv.group(1), kv.group(2).strip()
+
+                if value == "n":
+                    if name in defines:
+                        mismatches.append(f"{name}: expected unset, but defined as {defines[name]}")
+                    continue
+
+                if name not in defines:
+                    mismatches.append(f"{name}: absent from tuya_kconfig.h (renamed upstream, or its parent menu is off)")
+                    continue
+
+                expected = "1" if value == "y" else value
+                if defines[name] != expected:
+                    mismatches.append(f"{name}: expected {expected}, got {defines[name]}")
+
+        if mismatches:
+            logging.error(f"{len(mismatches)} symbol(s) in app_default.config did not survive kconfig:")
+            for item in mismatches:
+                logging.error(f"  - {item}")
+            return False
+
+        logging.info("All app_default.config symbols verified against tuya_kconfig.h")
         return True
 
     def copy_libs(self, libs_list_file, output_path, prefix=None):

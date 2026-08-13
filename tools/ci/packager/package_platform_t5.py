@@ -250,7 +250,7 @@ class PackagePlatformT5(PackagePlatform):
             logging.error(f"Build error: {e}")
             return False
 
-        return True
+        return self.verify_kconfig_applied()
 
     def apply_platform_patch(self):
         patch_file = os.path.join(self.data_path, "t5_platform.patch")
